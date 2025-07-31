@@ -64,7 +64,6 @@ def apply_swiss_design():
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
         line-height: 1.7;
         font-size: 1.05rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
     .story-content strong {
@@ -114,20 +113,16 @@ def apply_swiss_design():
         padding: 0.75rem 2rem;
         text-transform: uppercase;
         font-size: 0.9rem;
-        transition: all 0.2s ease;
         border-radius: 0;
     }
     
     .stButton > button:hover {
         background-color: #333333;
         color: #FFFFFF;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     
     .stButton > button:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        background-color: #000000;
     }
     
     /* Text Areas and Inputs */
@@ -285,12 +280,12 @@ def main():
         # Enhanced action buttons
         st.markdown("### ACTIONS")
         
-        if st.button("🔄 NEW STORY", use_container_width=True):
+        if st.button("NEW STORY", use_container_width=True):
             SessionManager.reset_session()
             st.rerun()
         
         if st.session_state.story_started:
-            if st.button("📥 EXPORT STORY", use_container_width=True):
+            if st.button("EXPORT STORY", use_container_width=True):
                 show_export_options()
         
         st.markdown("---")
@@ -333,15 +328,14 @@ def show_story_initiation():
     st.markdown("""
     <div style="background-color: #F8F8F8; padding: 2rem; border-left: 4px solid #000000; margin: 2rem 0;">
         <p style="font-size: 1.1rem; line-height: 1.6; margin: 0; color: #333333;">
-            Create narratives enriched with cultural intelligence. Your story will be enhanced with 
-            cross-domain affinities discovered through Qloo's AI, connecting music, film, travel, 
-            and lifestyle elements into compelling narratives.
+            Create narratives enriched with cultural intelligence. Stories are enhanced with 
+            cross-domain affinities connecting music, film, travel, and lifestyle elements.
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     # Taste profile builder with enhanced styling
-    with st.expander("🎭 BUILD CULTURAL TASTE PROFILE", expanded=False):
+    with st.expander("BUILD CULTURAL TASTE PROFILE", expanded=False):
         show_taste_profile_builder()
     
     # Enhanced story prompt input
@@ -366,12 +360,12 @@ def show_story_initiation():
         example_col1, example_col2 = st.columns(2)
         
         with example_col1:
-            if st.button("🌃 Cyberpunk + Jazz", use_container_width=True):
+            if st.button("CYBERPUNK + JAZZ", use_container_width=True):
                 st.session_state.temp_prompt = "A cyberpunk thriller with jazz influences in Neo-Tokyo"
                 st.rerun()
         
         with example_col2:
-            if st.button("🎵 Romance + Vinyl", use_container_width=True):
+            if st.button("ROMANCE + VINYL", use_container_width=True):
                 st.session_state.temp_prompt = "A romantic comedy involving vintage vinyl records and food trucks"
                 st.rerun()
     
@@ -460,10 +454,10 @@ def show_story_interface():
         st.markdown(f'<div class="turn-counter">Turn {stats["turns_completed"]} of {stats["max_turns"]}</div>', unsafe_allow_html=True)
     with col2:
         if stats["turns_completed"] > 5:
-            st.markdown('<div class="turn-counter" style="color: #FF6B35;">Deep Story</div>', unsafe_allow_html=True)
+            st.markdown('<div class="turn-counter">Extended</div>', unsafe_allow_html=True)
     with col3:
         if stats["has_cultural_context"]:
-            st.markdown('<div class="turn-counter" style="color: #2E8B57;">Enriched</div>', unsafe_allow_html=True)
+            st.markdown('<div class="turn-counter">Enriched</div>', unsafe_allow_html=True)
     
     # Display current story with enhanced formatting
     st.markdown('<div class="section-header">Narrative Thread</div>', unsafe_allow_html=True)
@@ -487,7 +481,7 @@ def show_story_interface():
     
     # Enhanced cultural insights panel
     if st.session_state.cultural_explanations:
-        with st.expander("🎭 CULTURAL INTELLIGENCE INSIGHTS", expanded=True):
+        with st.expander("CULTURAL INTELLIGENCE INSIGHTS", expanded=True):
             st.markdown("Qloo AI has discovered these cultural connections in your story:")
             for key, explanation in st.session_state.cultural_explanations.items():
                 st.markdown(f'<div class="cultural-insight"><strong>{key}:</strong> {explanation}</div>', 
@@ -495,8 +489,7 @@ def show_story_interface():
     
     # Story completion check
     if SessionManager.is_story_complete():
-        st.balloons()
-        st.success("Story Complete! You've crafted a rich narrative enhanced with cultural intelligence.")
+        st.success("Story Complete. Maximum turns reached.")
         show_export_options()
         return
     
@@ -520,19 +513,19 @@ def show_story_interface():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        if st.button("📝 CONTINUE STORY", disabled=not user_input.strip(), use_container_width=True):
+        if st.button("CONTINUE STORY", disabled=not user_input.strip(), use_container_width=True):
             continue_story(user_input)
     
     with col2:
-        if st.button("🎯 GET OPTIONS", use_container_width=True):
+        if st.button("GET OPTIONS", use_container_width=True):
             generate_branching_options()
     
     with col3:
-        if st.button("🎭 ENHANCE CULTURE", use_container_width=True):
+        if st.button("ENHANCE CULTURE", use_container_width=True):
             enhance_with_culture()
     
     with col4:
-        if st.button("💡 SURPRISE ME", use_container_width=True):
+        if st.button("SURPRISE ME", use_container_width=True):
             surprise_continuation()
 
 def show_branching_options():
@@ -690,14 +683,14 @@ def surprise_continuation():
     continue_story(surprise_element, is_branching_choice=True)
 
 def show_demo_examples():
-    """Show enhanced demo examples for quick testing."""
+    """Show demo examples for quick testing."""
     st.markdown("**Quick Start Examples:**")
     
     examples = [
-        ("🌃 Cyberpunk + Jazz", "A cyberpunk thriller with jazz influences in Neo-Tokyo"),
-        ("💕 Romance + Vinyl", "A romantic comedy involving vintage vinyl records and food trucks"),
-        ("⚔️ Fantasy + Hip-Hop", "A fantasy adventure combining Norse mythology with modern hip-hop culture"),
-        ("🚀 Sci-Fi + Classical", "A space opera where classical music holds the key to interstellar communication")
+        ("CYBERPUNK + JAZZ", "A cyberpunk thriller with jazz influences in Neo-Tokyo"),
+        ("ROMANCE + VINYL", "A romantic comedy involving vintage vinyl records and food trucks"),
+        ("FANTASY + HIP-HOP", "A fantasy adventure combining Norse mythology with modern hip-hop culture"),
+        ("SCI-FI + CLASSICAL", "A space opera where classical music holds the key to interstellar communication")
     ]
     
     for title, example in examples:
