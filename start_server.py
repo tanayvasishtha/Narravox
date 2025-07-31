@@ -10,9 +10,13 @@ from pathlib import Path
 
 def setup_environment():
     """Set up environment variables for the server."""
+    from dotenv import load_dotenv
+    
+    # Load environment variables from .env file
+    load_dotenv()
+    
+    # Only set non-sensitive environment variables
     env_vars = {
-        'PERPLEXITY_API_KEY': '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',
-        'QLOO_API_KEY': 'SpdNKtyqJCuwGRddpnxJ3JoAyytrIAXfwGoDqu6ycbc',
         'QLOO_BASE_URL': 'https://hackathon.api.qloo.com',
         'STREAMLIT_SERVER_HEADLESS': 'true',
         'STREAMLIT_SERVER_PORT': '8501',
@@ -22,6 +26,22 @@ def setup_environment():
     
     for key, value in env_vars.items():
         os.environ[key] = value
+    
+    # Check if API keys are available
+    perplexity_key = os.getenv('PERPLEXITY_API_KEY')
+    qloo_key = os.getenv('QLOO_API_KEY')
+    
+    if not perplexity_key:
+        print("⚠️  WARNING: PERPLEXITY_API_KEY not found in environment variables")
+        print("   Please set it in your .env file or environment")
+    else:
+        print("✓ PERPLEXITY_API_KEY loaded from environment")
+        
+    if not qloo_key:
+        print("⚠️  WARNING: QLOO_API_KEY not found in environment variables")
+        print("   Please set it in your .env file or environment")
+    else:
+        print("✓ QLOO_API_KEY loaded from environment")
     
     print("✓ Environment variables configured")
 
