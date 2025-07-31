@@ -272,10 +272,17 @@ def initialize_services():
         if 'perplexity_service' not in st.session_state:
             st.session_state.perplexity_service = PerplexityService()
             st.session_state.qloo_service = QlooService()
-            # st.success("✅ API services initialized successfully!")
+            
+            # Test API connectivity
+            if st.session_state.perplexity_service.api_key:
+                st.session_state.api_status = "✅ APIs initialized"
+            else:
+                st.session_state.api_status = "⚠️ API keys missing"
+                
     except Exception as e:
         st.error(f"❌ Failed to initialize services: {str(e)}")
         st.write("Please check your API keys in the environment variables.")
+        st.session_state.api_status = "❌ Service initialization failed"
 
 def main():
     # Apply Swiss Design styling
@@ -295,6 +302,10 @@ def main():
     with st.sidebar:
         st.markdown("### SESSION OVERVIEW")
         stats = SessionManager.get_session_stats()
+        
+        # API Status
+        if hasattr(st.session_state, 'api_status'):
+            st.info(st.session_state.api_status)
         
         # Progress indicator
         progress = stats['turns_completed'] / stats['max_turns']
@@ -386,11 +397,18 @@ def show_story_initiation():
     with col2:
         if st.button("BEGIN STORY", disabled=not story_prompt.strip(), use_container_width=True):
             try:
-                st.write("Button clicked! Starting story creation...")
-                create_story_opener(story_prompt)
+                with st.spinner("Creating your story..."):
+                    # Check if services are available
+                    if not hasattr(st.session_state, 'perplexity_service') or not hasattr(st.session_state, 'qloo_service'):
+                        st.error("❌ Services not initialized. Please refresh the page.")
+                        return
+                    
+                    # Create the story
+                    create_story_opener(story_prompt)
+                    
             except Exception as e:
-                st.error(f"Error creating story: {str(e)}")
-                st.write("Please check your API keys and try again.")
+                st.error(f"❌ Error creating story: {str(e)}")
+                st.write("Please check your API keys and internet connection.")
     
     # Quick examples for inspiration
     if not story_prompt:
@@ -457,46 +475,39 @@ def show_taste_profile_builder():
 def create_story_opener(prompt: str):
     """Create the initial story using Perplexity and Qloo."""
     try:
-        st.write("🔄 Processing your story request...")
+        # Check if services are initialized
+        if not hasattr(st.session_state, 'qloo_service') or not hasattr(st.session_state, 'perplexity_service'):
+            st.error("❌ Services not initialized. Please refresh the page.")
+            return
         
-        with st.spinner("Creating your story opener..."):
-            # Check if services are initialized
-            if not hasattr(st.session_state, 'qloo_service') or not hasattr(st.session_state, 'perplexity_service'):
-                st.error("Services not initialized. Please refresh the page.")
-                return
-            
-            st.write("📡 Getting cultural context from Qloo...")
-            # Get cultural context from Qloo
+        # Get cultural context from Qloo
+        cultural_context = ""
+        try:
             cultural_context = st.session_state.qloo_service.create_cultural_context(prompt)
-            
             if cultural_context:
-                st.write(f"✅ Cultural context found: {cultural_context[:100]}...")
                 SessionManager.set_cultural_context(cultural_context)
-                # Add cultural explanation
                 SessionManager.add_cultural_explanation(
                     "Story Cultural Elements",
                     f"Qloo identified these cultural affinities: {cultural_context}"
                 )
-            else:
-                st.write("ℹ️ No specific cultural context found, proceeding with story generation...")
+        except Exception as e:
+            st.warning(f"⚠️ Cultural context unavailable: {str(e)}")
+        
+        # Generate story opener with Perplexity
+        result = st.session_state.perplexity_service.generate_story_opener(prompt, cultural_context)
+        
+        if result["success"]:
+            # Add entries to story
+            SessionManager.add_story_entry(prompt, "user")
+            SessionManager.add_story_entry(result["content"], "ai")
+            SessionManager.increment_turn()
+            st.session_state.story_started = True
+            st.success("✅ Story created successfully!")
+            st.rerun()
+        else:
+            st.error(f"❌ Story generation failed: {result['error']}")
+            SessionManager.set_error(result["error"])
             
-            st.write("🤖 Generating story with Perplexity Sonar Pro...")
-            # Generate story opener with Perplexity
-            result = st.session_state.perplexity_service.generate_story_opener(prompt, cultural_context)
-            
-            if result["success"]:
-                st.write("✅ Story generated successfully!")
-                # Add entries to story
-                SessionManager.add_story_entry(prompt, "user")
-                SessionManager.add_story_entry(result["content"], "ai")
-                SessionManager.increment_turn()
-                st.session_state.story_started = True
-                st.success("Story created! Refreshing interface...")
-                st.rerun()
-            else:
-                st.error(f"❌ Story generation failed: {result['error']}")
-                SessionManager.set_error(result["error"])
-                
     except Exception as e:
         st.error(f"❌ Unexpected error: {str(e)}")
         st.write("Please check your internet connection and API keys.")
@@ -595,7 +606,12 @@ def show_branching_options():
 
 def continue_story(user_input: str, is_branching_choice: bool = False):
     """Continue the story with user input."""
-    with st.spinner("AI is continuing the story..."):
+    try:
+        # Check if services are available
+        if not hasattr(st.session_state, 'perplexity_service'):
+            st.error("❌ Perplexity service not available. Please refresh the page.")
+            return
+        
         # Add user input to history
         if not is_branching_choice:
             SessionManager.add_story_entry(user_input, "user")
@@ -615,16 +631,29 @@ def continue_story(user_input: str, is_branching_choice: bool = False):
             st.session_state.branching_options = []
             
             # Enhance with new cultural context if entities found
-            enhance_story_with_new_culture(user_input)
+            try:
+                enhance_story_with_new_culture(user_input)
+            except Exception as e:
+                st.warning(f"⚠️ Cultural enhancement failed: {str(e)}")
             
+            st.success("✅ Story continued successfully!")
             st.rerun()
         else:
+            st.error(f"❌ Story continuation failed: {result['error']}")
             SessionManager.set_error(result["error"])
-            st.rerun()
+            
+    except Exception as e:
+        st.error(f"❌ Unexpected error: {str(e)}")
+        st.write("Please check your internet connection and try again.")
 
 def generate_branching_options():
     """Generate branching narrative options."""
-    with st.spinner("Generating story options..."):
+    try:
+        # Check if services are available
+        if not hasattr(st.session_state, 'perplexity_service'):
+            st.error("❌ Perplexity service not available. Please refresh the page.")
+            return
+        
         current_story = SessionManager.get_story_text()
         
         result = st.session_state.perplexity_service.generate_branching_options(
@@ -634,14 +663,24 @@ def generate_branching_options():
         
         if result["success"]:
             st.session_state.branching_options = result["options"]
+            st.success("✅ Story options generated!")
             st.rerun()
         else:
+            st.error(f"❌ Failed to generate options: {result['error']}")
             SessionManager.set_error(result["error"])
-            st.rerun()
+            
+    except Exception as e:
+        st.error(f"❌ Unexpected error: {str(e)}")
+        st.write("Please check your internet connection and try again.")
 
 def enhance_with_culture():
     """Enhance story with additional cultural context."""
-    with st.spinner("Discovering cultural connections..."):
+    try:
+        # Check if services are available
+        if not hasattr(st.session_state, 'qloo_service'):
+            st.error("❌ Qloo service not available. Please refresh the page.")
+            return
+        
         # Get new entities from recent story content
         recent_content = ""
         if st.session_state.story_history:
@@ -662,10 +701,14 @@ def enhance_with_culture():
                 f"New cultural connections found: {new_context}"
             )
             
-            st.success("New cultural connections discovered!")
+            st.success("✅ New cultural connections discovered!")
             st.rerun()
         else:
-            st.info("No new cultural connections found at this time.")
+            st.info("ℹ️ No new cultural connections found at this time.")
+            
+    except Exception as e:
+        st.error(f"❌ Cultural enhancement failed: {str(e)}")
+        st.write("Please check your internet connection and try again.")
 
 def enhance_story_with_new_culture(user_input: str):
     """Automatically enhance story with cultural context from new user input."""
