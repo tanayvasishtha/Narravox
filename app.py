@@ -233,10 +233,36 @@ def apply_swiss_design():
         }
     }
     
-    /* Hide Streamlit Branding */
+    /* Hide Streamlit Branding and Links */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    
+    /* Remove header anchor links */
+    .main-header a {
+        text-decoration: none !important;
+        color: #000000 !important;
+        pointer-events: none;
+    }
+    
+    .main-header a:hover {
+        text-decoration: none !important;
+        color: #000000 !important;
+    }
+    
+    /* Hide all header link icons */
+    .element-container .stMarkdown h1 a,
+    .element-container .stMarkdown h2 a,
+    .element-container .stMarkdown h3 a {
+        display: none !important;
+    }
+    
+    /* Remove hover effects on headers */
+    .element-container .stMarkdown h1:hover::after,
+    .element-container .stMarkdown h2:hover::after,
+    .element-container .stMarkdown h3:hover::after {
+        display: none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -254,9 +280,11 @@ def main():
     SessionManager.init_session()
     initialize_services()
     
-    # Main header
-    st.markdown('<h1 class="main-header">Narravox</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="tagline">Vocalize Worlds Woven from Cultural Affinities</p>', unsafe_allow_html=True)
+    # Main header - using div instead of h1 to avoid anchor links
+    st.markdown('''
+    <div class="main-header">Narravox</div>
+    <div class="tagline">Vocalize Worlds Woven from Cultural Affinities</div>
+    ''', unsafe_allow_html=True)
     
     # Enhanced Sidebar for controls and information
     with st.sidebar:
