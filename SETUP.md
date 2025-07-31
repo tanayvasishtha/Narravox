@@ -27,7 +27,7 @@
 ### Perplexity Sonar API
 - Get your API key from: https://www.perplexity.ai/pro
 - Used for story generation and continuation
-- Model: `llama-3.1-sonar-small-128k-online`
+- Model: `perplexity/sonar-pro` (200,000 context window, advanced capabilities)
 
 ### Qloo Taste AI API
 - Get your API key from: https://www.qloo.com/

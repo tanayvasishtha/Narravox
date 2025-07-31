@@ -13,8 +13,9 @@ The application demonstrates how modern AI can transcend simple text generation 
 ### Core Technologies
 
 **Language Model Integration**
-- Perplexity Sonar API with llama-3.1-sonar-small-128k-online
-- Advanced reasoning capabilities for narrative consistency
+- Perplexity Sonar Pro API (perplexity/sonar-pro)
+- 200,000 context window with advanced capabilities
+- Enhanced reasoning and double citations for narrative consistency
 - Context-aware story continuation and branching
 
 **Cultural Intelligence**
@@ -106,7 +107,7 @@ Expandable interface elements providing detailed explanations of discovered cult
 
 ### Perplexity Sonar
 
-The application utilizes Perplexity's Sonar model for sophisticated text generation with the following capabilities:
+The application utilizes Perplexity's Sonar Pro model for sophisticated text generation with the following capabilities:
 
 - Context-aware narrative generation
 - Consistent character and plot development  

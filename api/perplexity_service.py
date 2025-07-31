@@ -20,7 +20,7 @@ class PerplexityService:
             enhanced_prompt = self._create_story_prompt(prompt, cultural_context)
             
             payload = {
-                "model": "llama-3.1-sonar-small-128k-online",
+                "model": "perplexity/sonar-pro",
                 "messages": [
                     {
                         "role": "system",
@@ -86,7 +86,7 @@ class PerplexityService:
             })
             
             payload = {
-                "model": "llama-3.1-sonar-small-128k-online",
+                "model": "perplexity/sonar-pro",
                 "messages": messages,
                 "max_tokens": 300,
                 "temperature": 0.7
@@ -136,7 +136,7 @@ Option 2: [continuation]
 Option 3: [continuation]"""
 
             payload = {
-                "model": "llama-3.1-sonar-small-128k-online",
+                "model": "perplexity/sonar-pro",
                 "messages": [
                     {
                         "role": "system",
