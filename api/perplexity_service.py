@@ -71,12 +71,27 @@ class PerplexityService:
                 }
             ]
             
-            # Add conversation history
+            # Build conversation history ensuring proper alternation
+            conversation_history = []
             for entry in story_history[-6:]:  # Last 6 turns for context
-                messages.append({
-                    "role": "user" if entry["type"] == "user" else "assistant",
-                    "content": entry["content"]
-                })
+                if entry["type"] == "user":
+                    conversation_history.append({
+                        "role": "user",
+                        "content": entry["content"]
+                    })
+                elif entry["type"] == "assistant":
+                    conversation_history.append({
+                        "role": "assistant", 
+                        "content": entry["content"]
+                    })
+            
+            # Ensure we end with a user message for the API
+            if conversation_history and conversation_history[-1]["role"] == "assistant":
+                # Remove the last assistant message to avoid ending with assistant
+                conversation_history.pop()
+            
+            # Add conversation history to messages
+            messages.extend(conversation_history)
             
             # Add current user input with cultural context
             enhanced_input = self._enhance_with_culture(user_input, cultural_context)
@@ -85,9 +100,12 @@ class PerplexityService:
                 "content": enhanced_input
             })
             
+            # Validate message sequence
+            validated_messages = self._validate_message_sequence(messages)
+            
             payload = {
                 "model": "sonar-pro",
-                "messages": messages,
+                "messages": validated_messages,
                 "max_tokens": 300,
                 "temperature": 0.7
             }
@@ -216,4 +234,24 @@ Option 3: [continuation]"""
                 "Shift perspective to another character"
             ]
         
-        return options 
+        return options
+    
+    def _validate_message_sequence(self, messages: List[Dict]) -> List[Dict]:
+        """Ensure message sequence follows API requirements."""
+        if len(messages) < 2:  # Need at least system + user
+            return messages
+            
+        validated_messages = []
+        last_role = None
+        
+        for message in messages:
+            current_role = message["role"]
+            
+            # Skip duplicate consecutive messages of same role
+            if current_role == last_role and current_role in ["user", "assistant"]:
+                continue
+                
+            validated_messages.append(message)
+            last_role = current_role
+            
+        return validated_messages 
