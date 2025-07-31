@@ -268,9 +268,14 @@ def apply_swiss_design():
 
 def initialize_services():
     """Initialize API services."""
-    if 'perplexity_service' not in st.session_state:
-        st.session_state.perplexity_service = PerplexityService()
-        st.session_state.qloo_service = QlooService()
+    try:
+        if 'perplexity_service' not in st.session_state:
+            st.session_state.perplexity_service = PerplexityService()
+            st.session_state.qloo_service = QlooService()
+            # st.success("✅ API services initialized successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to initialize services: {str(e)}")
+        st.write("Please check your API keys in the environment variables.")
 
 def main():
     # Apply Swiss Design styling
@@ -380,7 +385,12 @@ def show_story_initiation():
     
     with col2:
         if st.button("BEGIN STORY", disabled=not story_prompt.strip(), use_container_width=True):
-            create_story_opener(story_prompt)
+            try:
+                st.write("Button clicked! Starting story creation...")
+                create_story_opener(story_prompt)
+            except Exception as e:
+                st.error(f"Error creating story: {str(e)}")
+                st.write("Please check your API keys and try again.")
     
     # Quick examples for inspiration
     if not story_prompt:
@@ -446,31 +456,50 @@ def show_taste_profile_builder():
 
 def create_story_opener(prompt: str):
     """Create the initial story using Perplexity and Qloo."""
-    with st.spinner("Creating your story opener..."):
-        # Get cultural context from Qloo
-        cultural_context = st.session_state.qloo_service.create_cultural_context(prompt)
+    try:
+        st.write("🔄 Processing your story request...")
         
-        if cultural_context:
-            SessionManager.set_cultural_context(cultural_context)
-            # Add cultural explanation
-            SessionManager.add_cultural_explanation(
-                "Story Cultural Elements",
-                f"Qloo identified these cultural affinities: {cultural_context}"
-            )
-        
-        # Generate story opener with Perplexity
-        result = st.session_state.perplexity_service.generate_story_opener(prompt, cultural_context)
-        
-        if result["success"]:
-            # Add entries to story
-            SessionManager.add_story_entry(prompt, "user")
-            SessionManager.add_story_entry(result["content"], "ai")
-            SessionManager.increment_turn()
-            st.session_state.story_started = True
-            st.rerun()
-        else:
-            SessionManager.set_error(result["error"])
-            st.rerun()
+        with st.spinner("Creating your story opener..."):
+            # Check if services are initialized
+            if not hasattr(st.session_state, 'qloo_service') or not hasattr(st.session_state, 'perplexity_service'):
+                st.error("Services not initialized. Please refresh the page.")
+                return
+            
+            st.write("📡 Getting cultural context from Qloo...")
+            # Get cultural context from Qloo
+            cultural_context = st.session_state.qloo_service.create_cultural_context(prompt)
+            
+            if cultural_context:
+                st.write(f"✅ Cultural context found: {cultural_context[:100]}...")
+                SessionManager.set_cultural_context(cultural_context)
+                # Add cultural explanation
+                SessionManager.add_cultural_explanation(
+                    "Story Cultural Elements",
+                    f"Qloo identified these cultural affinities: {cultural_context}"
+                )
+            else:
+                st.write("ℹ️ No specific cultural context found, proceeding with story generation...")
+            
+            st.write("🤖 Generating story with Perplexity Sonar Pro...")
+            # Generate story opener with Perplexity
+            result = st.session_state.perplexity_service.generate_story_opener(prompt, cultural_context)
+            
+            if result["success"]:
+                st.write("✅ Story generated successfully!")
+                # Add entries to story
+                SessionManager.add_story_entry(prompt, "user")
+                SessionManager.add_story_entry(result["content"], "ai")
+                SessionManager.increment_turn()
+                st.session_state.story_started = True
+                st.success("Story created! Refreshing interface...")
+                st.rerun()
+            else:
+                st.error(f"❌ Story generation failed: {result['error']}")
+                SessionManager.set_error(result["error"])
+                
+    except Exception as e:
+        st.error(f"❌ Unexpected error: {str(e)}")
+        st.write("Please check your internet connection and API keys.")
 
 def show_story_interface():
     """Display the enhanced main story interface."""
