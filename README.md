@@ -13,7 +13,7 @@ The application demonstrates how modern AI can transcend simple text generation 
 ### Core Technologies
 
 **Language Model Integration**
-- Perplexity Sonar Pro API (perplexity/sonar-pro)
+- Perplexity Sonar Pro API (sonar-pro)
 - 200,000 context window with advanced capabilities
 - Enhanced reasoning and double citations for narrative consistency
 - Context-aware story continuation and branching
