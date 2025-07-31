@@ -1,0 +1,9 @@
+[33mb27fc97[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m PRODUCTION READY: Fix all connectivity issues and make app fully functional
+[33mc10ba22[m SECURITY FIX: Remove hardcoded API keys from start_server.py
+[33mb3f7bc5[m Add comprehensive debugging to BEGIN STORY button
+[33m0261226[m[33m ([m[1;31morigin/main[m[33m)[m Remove hover link from Narravox header for clean Swiss Design
+[33mfe56884[m Fix server connection issues and CSP errors
+[33m619a5f4[m Reduce excessive spacing and padding by 30% for better UI density
+[33m36ed5a2[m Update to Perplexity Sonar Pro model for enhanced capabilities
+[33m6b6a5fb[m Fix UI bugs and remove all emojis for proper Swiss Design compliance
+[33mf50d448[m Initial Narravox implementation for Qloo LLM Hackathon 2025

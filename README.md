@@ -125,9 +125,52 @@ Cultural intelligence is provided through Qloo's comprehensive API:
 
 ## Deployment
 
-### Production Environment
+## 🚀 Deployment
 
-The application is configured for deployment on Render with the following specifications:
+### Quick Deployment Check
+Run the deployment script to verify everything is ready:
+```bash
+python deploy.py
+```
+
+### Render Deployment (Recommended)
+1. Push your code to GitHub
+2. Connect your repository to Render
+3. Set environment variables in Render dashboard:
+   - `PERPLEXITY_API_KEY` - Your Perplexity API key
+   - `QLOO_API_KEY` - Your Qloo API key
+   - `QLOO_BASE_URL=https://hackathon.api.qloo.com`
+4. Deploy using the provided `render.yaml`
+
+### Alternative Deployment Options
+
+#### Heroku
+```bash
+heroku create narravox-app
+heroku config:set PERPLEXITY_API_KEY=your_key
+heroku config:set QLOO_API_KEY=your_key
+git push heroku main
+```
+
+#### Railway
+1. Connect your GitHub repository to Railway
+2. Set environment variables in Railway dashboard
+3. Deploy automatically
+
+#### Vercel
+```bash
+vercel --prod
+```
+
+### Environment Variables
+Make sure to set these in your deployment platform:
+- `PERPLEXITY_API_KEY` - Get from [Perplexity AI](https://www.perplexity.ai/settings/api)
+- `QLOO_API_KEY` - Get from [Qloo Hackathon](https://hackathon.api.qloo.com)
+- `QLOO_BASE_URL=https://hackathon.api.qloo.com`
+
+### Production Configuration
+
+The application is configured for deployment with the following specifications:
 
 ```yaml
 services:
@@ -137,14 +180,6 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
 ```
-
-### Environment Variables
-
-Production deployment requires the following environment variables:
-
-- `PERPLEXITY_API_KEY`: Authentication for Perplexity Sonar API
-- `QLOO_API_KEY`: Authentication for Qloo Taste AI API  
-- `QLOO_BASE_URL`: Base URL for Qloo API endpoints
 
 ### Continuous Deployment
 

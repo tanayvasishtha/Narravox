@@ -15,42 +15,42 @@ def apply_swiss_design():
     <style>
     /* Global Styles */
     .main .block-container {
-        padding-top: 1.4rem;
-        padding-bottom: 1.4rem;
+        padding-top: 0.8rem;
+        padding-bottom: 0.8rem;
         max-width: 1200px;
     }
     
     /* Typography */
     .main-header {
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-size: 3rem;
+        font-size: 2.5rem;
         font-weight: 300;
         color: #000000;
         text-align: left;
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.2rem;
         line-height: 1.1;
         letter-spacing: -0.02em;
     }
     
     .tagline {
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: #666666;
         font-weight: 300;
-        margin-bottom: 2.8rem;
+        margin-bottom: 1.5rem;
         line-height: 1.4;
         font-style: italic;
     }
     
     .section-header {
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-size: 1.4rem;
+        font-size: 1.2rem;
         font-weight: 400;
         color: #000000;
-        margin-top: 2.1rem;
-        margin-bottom: 1rem;
+        margin-top: 1.2rem;
+        margin-bottom: 0.6rem;
         border-bottom: 2px solid #000000;
-        padding-bottom: 0.3rem;
+        padding-bottom: 0.2rem;
         text-transform: uppercase;
         letter-spacing: 0.1em;
     }
@@ -58,12 +58,12 @@ def apply_swiss_design():
     /* Story Content */
     .story-content {
         background-color: #FAFAFA;
-        padding: 1.4rem;
+        padding: 0.8rem;
         border-left: 4px solid #000000;
-        margin: 1rem 0;
+        margin: 0.5rem 0;
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        line-height: 1.7;
-        font-size: 1.05rem;
+        line-height: 1.6;
+        font-size: 1rem;
     }
     
     .story-content strong {
@@ -77,12 +77,12 @@ def apply_swiss_design():
     /* Cultural Insights */
     .cultural-insight {
         background-color: #F8F8F8;
-        padding: 1rem;
+        padding: 0.6rem;
         border: 1px solid #E0E0E0;
-        margin: 0.7rem 0;
-        font-size: 0.95rem;
+        margin: 0.4rem 0;
+        font-size: 0.9rem;
         color: #555555;
-        line-height: 1.6;
+        line-height: 1.5;
         border-radius: 0;
     }
     
@@ -94,10 +94,10 @@ def apply_swiss_design():
     /* Interface Elements */
     .turn-counter {
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: #888888;
         text-align: right;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
         text-transform: uppercase;
         letter-spacing: 0.1em;
     }
@@ -110,9 +110,9 @@ def apply_swiss_design():
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
         font-weight: 400;
         letter-spacing: 0.05em;
-        padding: 0.5rem 1.4rem;
+        padding: 0.4rem 1rem;
         text-transform: uppercase;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         border-radius: 0;
     }
     
@@ -128,11 +128,11 @@ def apply_swiss_design():
     /* Text Areas and Inputs */
     .stTextArea textarea {
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-size: 1rem;
-        line-height: 1.6;
+        font-size: 0.95rem;
+        line-height: 1.5;
         border-radius: 0;
         border: 2px solid #E0E0E0;
-        padding: 0.7rem;
+        padding: 0.5rem;
     }
     
     .stTextArea textarea:focus {
@@ -144,7 +144,7 @@ def apply_swiss_design():
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
         border-radius: 0;
         border: 1px solid #CCCCCC;
-        padding: 0.5rem;
+        padding: 0.4rem;
     }
     
     .stTextInput input:focus {
@@ -196,14 +196,14 @@ def apply_swiss_design():
     .feature-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 2rem;
-        margin: 2rem 0;
+        gap: 1.2rem;
+        margin: 1.2rem 0;
     }
     
     .feature-card {
         background-color: #FFFFFF;
         border: 1px solid #E0E0E0;
-        padding: 2rem;
+        padding: 1.2rem;
         text-align: center;
     }
     
@@ -220,16 +220,16 @@ def apply_swiss_design():
     /* Responsive Design */
     @media (max-width: 768px) {
         .main-header {
-            font-size: 2rem;
+            font-size: 1.8rem;
         }
         
         .story-content {
-            padding: 1.5rem;
+            padding: 0.8rem;
         }
         
         .stButton > button {
-            padding: 0.5rem 1.5rem;
-            font-size: 0.85rem;
+            padding: 0.4rem 1rem;
+            font-size: 0.8rem;
         }
     }
     
@@ -370,8 +370,8 @@ def show_story_initiation():
     
     # Welcome message
     st.markdown("""
-    <div style="background-color: #F8F8F8; padding: 1.4rem; border-left: 4px solid #000000; margin: 1.4rem 0;">
-        <p style="font-size: 1.1rem; line-height: 1.6; margin: 0; color: #333333;">
+    <div style="background-color: #F8F8F8; padding: 0.8rem; border-left: 4px solid #000000; margin: 0.8rem 0;">
+        <p style="font-size: 1rem; line-height: 1.5; margin: 0; color: #333333;">
             Create narratives enriched with cultural intelligence. Stories are enhanced with 
             cross-domain affinities connecting music, film, travel, and lifestyle elements.
         </p>
@@ -387,7 +387,7 @@ def show_story_initiation():
     story_prompt = st.text_area(
         "Describe the story you want to create:",
         placeholder="Enter your story concept here. Include genres, themes, cultural elements, or specific interests. For example: 'A cyberpunk thriller with jazz influences set in a futuristic Tokyo where vintage vinyl records hold digital secrets.'",
-        height=120,
+        height=80,
         help="The more cultural elements you include, the richer your story will become through Qloo's AI enrichment."
     )
     
@@ -572,7 +572,7 @@ def show_story_interface():
     user_input = st.text_area(
         "Continue your narrative:",
         placeholder="What happens next in your story? Describe actions, dialogue, or new elements to explore...",
-        height=120,
+        height=80,
         key="story_input",
         help="Your input will be enriched with cultural context automatically."
     )
