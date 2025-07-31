@@ -15,8 +15,8 @@ def apply_swiss_design():
     <style>
     /* Global Styles */
     .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+        padding-top: 1.4rem;
+        padding-bottom: 1.4rem;
         max-width: 1200px;
     }
     
@@ -27,7 +27,7 @@ def apply_swiss_design():
         font-weight: 300;
         color: #000000;
         text-align: left;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem;
         line-height: 1.1;
         letter-spacing: -0.02em;
     }
@@ -37,7 +37,7 @@ def apply_swiss_design():
         font-size: 1.1rem;
         color: #666666;
         font-weight: 300;
-        margin-bottom: 4rem;
+        margin-bottom: 2.8rem;
         line-height: 1.4;
         font-style: italic;
     }
@@ -47,10 +47,10 @@ def apply_swiss_design():
         font-size: 1.4rem;
         font-weight: 400;
         color: #000000;
-        margin-top: 3rem;
-        margin-bottom: 1.5rem;
+        margin-top: 2.1rem;
+        margin-bottom: 1rem;
         border-bottom: 2px solid #000000;
-        padding-bottom: 0.5rem;
+        padding-bottom: 0.3rem;
         text-transform: uppercase;
         letter-spacing: 0.1em;
     }
@@ -58,9 +58,9 @@ def apply_swiss_design():
     /* Story Content */
     .story-content {
         background-color: #FAFAFA;
-        padding: 2rem;
+        padding: 1.4rem;
         border-left: 4px solid #000000;
-        margin: 1.5rem 0;
+        margin: 1rem 0;
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
         line-height: 1.7;
         font-size: 1.05rem;
@@ -77,9 +77,9 @@ def apply_swiss_design():
     /* Cultural Insights */
     .cultural-insight {
         background-color: #F8F8F8;
-        padding: 1.5rem;
+        padding: 1rem;
         border: 1px solid #E0E0E0;
-        margin: 1rem 0;
+        margin: 0.7rem 0;
         font-size: 0.95rem;
         color: #555555;
         line-height: 1.6;
@@ -97,7 +97,7 @@ def apply_swiss_design():
         font-size: 0.85rem;
         color: #888888;
         text-align: right;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
         text-transform: uppercase;
         letter-spacing: 0.1em;
     }
@@ -110,7 +110,7 @@ def apply_swiss_design():
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
         font-weight: 400;
         letter-spacing: 0.05em;
-        padding: 0.75rem 2rem;
+        padding: 0.5rem 1.4rem;
         text-transform: uppercase;
         font-size: 0.9rem;
         border-radius: 0;
@@ -132,7 +132,7 @@ def apply_swiss_design():
         line-height: 1.6;
         border-radius: 0;
         border: 2px solid #E0E0E0;
-        padding: 1rem;
+        padding: 0.7rem;
     }
     
     .stTextArea textarea:focus {
@@ -144,7 +144,7 @@ def apply_swiss_design():
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
         border-radius: 0;
         border: 1px solid #CCCCCC;
-        padding: 0.75rem;
+        padding: 0.5rem;
     }
     
     .stTextInput input:focus {
@@ -326,7 +326,7 @@ def show_story_initiation():
     
     # Welcome message
     st.markdown("""
-    <div style="background-color: #F8F8F8; padding: 2rem; border-left: 4px solid #000000; margin: 2rem 0;">
+    <div style="background-color: #F8F8F8; padding: 1.4rem; border-left: 4px solid #000000; margin: 1.4rem 0;">
         <p style="font-size: 1.1rem; line-height: 1.6; margin: 0; color: #333333;">
             Create narratives enriched with cultural intelligence. Stories are enhanced with 
             cross-domain affinities connecting music, film, travel, and lifestyle elements.
