@@ -283,20 +283,118 @@ class QlooService:
         if not entities:
             return ""
         
+        # Try to get affinities from the entities
         affinities_result = self.get_affinities(entities)
         
-        if not affinities_result["success"]:
-            return ""
+        # If Qloo API fails or returns generic results, create context from user input
+        if not affinities_result["success"] or self._is_all_generic(affinities_result["affinities"], entities):
+            return self._create_context_from_entities(entities)
         
         cultural_elements = []
         affinities = affinities_result["affinities"]
         
+        # Only include relevant results, not generic ones
         for domain, items in affinities.items():
             if items:
-                top_items = items[:3]  # Top 3 items per domain
-                cultural_elements.append(f"{domain}: {', '.join(top_items)}")
+                # Filter out generic/irrelevant items
+                relevant_items = []
+                for item in items[:3]:
+                    # Skip items that are too generic or don't match user input
+                    if not self._is_generic_item(item, entities):
+                        relevant_items.append(item)
+                
+                if relevant_items:
+                    cultural_elements.append(f"{domain}: {', '.join(relevant_items)}")
+        
+        # If no relevant results from API, create from user entities
+        if not cultural_elements:
+            return self._create_context_from_entities(entities)
         
         return "; ".join(cultural_elements)
+    
+    def _create_context_from_entities(self, entities: List[str]) -> str:
+        """Create cultural context directly from user entities when API fails."""
+        if not entities:
+            return ""
+        
+        # Map entities to cultural domains
+        cultural_mapping = {
+            "japan": "travel: Japanese culture, Zen aesthetics, Traditional craftsmanship",
+            "jazz": "music: Jazz improvisation, Blues influences, Swing rhythms",
+            "sci-fi": "film: Science fiction, Futuristic themes, Technological innovation",
+            "mystery": "books: Detective fiction, Suspense narrative, Crime investigation",
+            "minimalist": "lifestyle: Minimalist design, Clean aesthetics, Functional beauty",
+            "meditation": "lifestyle: Mindfulness practices, Spiritual wellness, Inner peace",
+            "rock": "music: Rock energy, Electric guitars, Powerful rhythms",
+            "classical": "music: Orchestral arrangements, Classical composition, Timeless elegance",
+            "hip-hop": "music: Urban beats, Rap culture, Street art influence",
+            "electronic": "music: Digital soundscapes, Synthesizer textures, Modern production",
+            "fantasy": "books: Magical worlds, Epic quests, Mythical creatures",
+            "thriller": "film: Suspenseful tension, Psychological drama, Intense pacing",
+            "romance": "books: Emotional depth, Love stories, Heartfelt connections",
+            "comedy": "film: Humorous situations, Light-hearted storytelling, Witty dialogue",
+            "drama": "film: Character development, Emotional intensity, Realistic storytelling",
+            "travel": "lifestyle: Cultural exploration, Geographic diversity, Adventure themes",
+            "adventure": "lifestyle: Exploration spirit, Risk-taking, Discovery narratives",
+            "historical": "books: Period settings, Historical accuracy, Time-travel themes",
+            "contemporary": "lifestyle: Modern settings, Current social issues, Present-day relevance",
+            "urban": "lifestyle: City life, Metropolitan culture, Street-level stories",
+            "rural": "lifestyle: Countryside settings, Natural environments, Community focus",
+            "futuristic": "film: Advanced technology, Sci-fi aesthetics, Tomorrow's world",
+            "vintage": "lifestyle: Retro aesthetics, Nostalgic themes, Classic style",
+            "modern": "lifestyle: Contemporary design, Current trends, Present-day relevance"
+        }
+        
+        relevant_contexts = []
+        for entity in entities[:5]:  # Limit to 5 entities
+            entity_lower = entity.lower()
+            for key, context in cultural_mapping.items():
+                if key in entity_lower:
+                    relevant_contexts.append(context)
+                    break
+        
+        if relevant_contexts:
+            return "; ".join(relevant_contexts)
+        else:
+            # Generic cultural context based on entities
+            return f"cultural: {', '.join(entities[:3])} influences"
+    
+    def _is_all_generic(self, affinities: Dict, user_entities: List[str]) -> bool:
+        """Check if all affinity results are generic."""
+        if not affinities:
+            return True
+        
+        for domain, items in affinities.items():
+            for item in items:
+                if not self._is_generic_item(item, user_entities):
+                    return False  # Found at least one relevant item
+        
+        return True  # All items are generic
+    
+    def _is_generic_item(self, item: str, user_entities: List[str]) -> bool:
+        """Check if an item is too generic or irrelevant to user input."""
+        generic_patterns = [
+            "u.s.", "coast guard", "shanghai", "key west", "florida",
+            "coin toss", "hair pulling", "experiment", "timeline",
+            "truth or dare", "twerking", "announcement", "thrown out",
+            "self absorption", "coral reef", "unwed pregnancy"
+        ]
+        
+        item_lower = item.lower()
+        
+        # Check if item matches any generic pattern
+        for pattern in generic_patterns:
+            if pattern in item_lower:
+                return True
+        
+        # Check if item is relevant to user entities
+        for entity in user_entities:
+            entity_lower = entity.lower()
+            if entity_lower in item_lower or item_lower in entity_lower:
+                return False
+        
+        # If no relevance found, consider it generic
+        return True
     
     def _process_affinities(self, raw_data: Dict) -> Dict:
         """Process raw affinity data into organized format."""

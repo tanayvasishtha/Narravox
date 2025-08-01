@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import secrets
 import hashlib
 import time
+from typing import Dict, List, Optional, Any
 
 # Security: Load environment variables securely
 load_dotenv()
@@ -19,18 +20,14 @@ load_dotenv()
 from api.perplexity_service import PerplexityService
 from api.qloo_service import QlooService
 from utils.session_manager import SessionManager
-from utils.export_utils import create_story_text, create_story_pdf
+from utils.export_utils import ExportUtils
 
 # Security: Add security headers and validation
 def add_security_headers():
     """Add security headers to prevent common attacks."""
-    st.markdown("""
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:;">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-    """, unsafe_allow_html=True)
+    # Note: Streamlit doesn't support setting HTTP headers directly
+    # Security is handled through input validation and sanitization
+    pass
 
 def validate_input(text: str, max_length: int = 1000) -> tuple[bool, str]:
     """
@@ -44,7 +41,7 @@ def validate_input(text: str, max_length: int = 1000) -> tuple[bool, str]:
         Tuple of (is_valid, error_message)
     """
     if not text or not text.strip():
-        return False, "Input cannot be empty"
+        return False, "Please enter a story prompt"
     
     if len(text) > max_length:
         return False, f"Input too long. Maximum {max_length} characters allowed."
@@ -136,6 +133,9 @@ def validate_csrf_token(token: str) -> bool:
 # Security: Enhanced session initialization
 def initialize_secure_session():
     """Initialize session with security measures."""
+    # Initialize basic session state
+    SessionManager.init_session()
+    
     if 'session_id' not in st.session_state:
         st.session_state.session_id = secrets.token_urlsafe(16)
     
@@ -485,9 +485,6 @@ def initialize_services():
         st.session_state.api_status = "Service initialization failed"
 
 def main():
-    # Security: Add security headers
-    add_security_headers()
-    
     # Apply Swiss Design styling
     apply_swiss_design()
     
@@ -629,6 +626,9 @@ def show_story_initiation():
     
     with col1:
         if st.button("BEGIN STORY", key="begin_story_button", disabled=not story_prompt.strip(), use_container_width=True):
+            if not story_prompt.strip():
+                st.error("Please enter a story prompt")
+                return
             try:
                 with st.spinner("Creating your story..."):
                     create_story_opener(story_prompt)
@@ -659,7 +659,7 @@ def show_story_initiation():
             st.rerun()
     
     # Handle temp prompt
-    if hasattr(st.session_state, 'temp_prompt'):
+    if hasattr(st.session_state, 'temp_prompt') and st.session_state.temp_prompt:
         create_story_opener(st.session_state.temp_prompt)
         del st.session_state.temp_prompt
 
@@ -789,8 +789,21 @@ def create_story_opener(prompt: str):
                         if items:
                             all_prefs.extend(items)
                     
+                    # Create enhanced prompt with cultural preferences
                     enhanced_prompt = f"{sanitized_prompt} (Cultural preferences: {', '.join(all_prefs[:8])})"
+                    
+                    # Use the enhanced prompt for cultural context
                     cultural_context = st.session_state.qloo_service.create_cultural_context(enhanced_prompt)
+                    
+                    # If no relevant cultural context found, create one based on user preferences
+                    if not cultural_context:
+                        cultural_context = _create_cultural_context_from_preferences(all_prefs)
+                    
+                    # Also create cultural context directly from user preferences for better integration
+                    preference_context = _create_cultural_context_from_preferences(all_prefs)
+                    if preference_context:
+                        cultural_context = f"{cultural_context}; {preference_context}" if cultural_context else preference_context
+                    
                     SessionManager.add_cultural_explanation(
                         "Taste Profile Integration",
                         f"Enhanced story with your cultural preferences: {', '.join(all_prefs[:8])}"
@@ -832,6 +845,53 @@ def create_story_opener(prompt: str):
     except Exception as e:
         st.error(f"❌ Unexpected error: {str(e)}")
         st.write("Please check your internet connection and API keys.")
+
+def _create_cultural_context_from_preferences(preferences: List[str]) -> str:
+    """Create cultural context from user preferences when Qloo API doesn't return relevant results."""
+    if not preferences:
+        return ""
+    
+    # Map preferences to cultural domains
+    cultural_mapping = {
+        "japan": "travel: Japanese culture, Zen aesthetics, Traditional craftsmanship",
+        "jazz": "music: Jazz improvisation, Blues influences, Swing rhythms",
+        "sci-fi": "film: Science fiction, Futuristic themes, Technological innovation",
+        "mystery": "books: Detective fiction, Suspense narrative, Crime investigation",
+        "minimalist": "lifestyle: Minimalist design, Clean aesthetics, Functional beauty",
+        "meditation": "lifestyle: Mindfulness practices, Spiritual wellness, Inner peace",
+        "rock": "music: Rock energy, Electric guitars, Powerful rhythms",
+        "classical": "music: Orchestral arrangements, Classical composition, Timeless elegance",
+        "hip-hop": "music: Urban beats, Rap culture, Street art influence",
+        "electronic": "music: Digital soundscapes, Synthesizer textures, Modern production",
+        "fantasy": "books: Magical worlds, Epic quests, Mythical creatures",
+        "thriller": "film: Suspenseful tension, Psychological drama, Intense pacing",
+        "romance": "books: Emotional depth, Love stories, Heartfelt connections",
+        "comedy": "film: Humorous situations, Light-hearted storytelling, Witty dialogue",
+        "drama": "film: Character development, Emotional intensity, Realistic storytelling",
+        "travel": "lifestyle: Cultural exploration, Geographic diversity, Adventure themes",
+        "adventure": "lifestyle: Exploration spirit, Risk-taking, Discovery narratives",
+        "historical": "books: Period settings, Historical accuracy, Time-travel themes",
+        "contemporary": "lifestyle: Modern settings, Current social issues, Present-day relevance",
+        "urban": "lifestyle: City life, Metropolitan culture, Street-level stories",
+        "rural": "lifestyle: Countryside settings, Natural environments, Community focus",
+        "futuristic": "film: Advanced technology, Sci-fi aesthetics, Tomorrow's world",
+        "vintage": "lifestyle: Retro aesthetics, Nostalgic themes, Classic style",
+        "modern": "lifestyle: Contemporary design, Current trends, Present-day relevance"
+    }
+    
+    relevant_contexts = []
+    for pref in preferences[:5]:  # Limit to 5 preferences
+        pref_lower = pref.lower()
+        for key, context in cultural_mapping.items():
+            if key in pref_lower:
+                relevant_contexts.append(context)
+                break
+    
+    if relevant_contexts:
+        return "; ".join(relevant_contexts)
+    else:
+        # Generic cultural context based on preferences
+        return f"cultural: {', '.join(preferences[:3])} influences"
 
 def show_story_interface():
     """Display the enhanced main story interface."""
@@ -1109,7 +1169,7 @@ def show_export_options():
     
     with col1:
         if st.button("Download Text", key="download_text_button"):
-            text_content = create_story_text(story_data)
+            text_content = ExportUtils.create_story_text(story_data)
             st.download_button(
                 label="Download Story.txt",
                 data=text_content,
@@ -1120,7 +1180,7 @@ def show_export_options():
     with col2:
         if st.button("Download PDF", key="download_pdf_button"):
             try:
-                pdf_path = create_story_pdf(story_data)
+                pdf_path = ExportUtils.create_story_pdf(story_data)
                 with open(pdf_path, "rb") as pdf_file:
                     st.download_button(
                         label="Download Story.pdf",

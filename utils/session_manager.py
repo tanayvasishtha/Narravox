@@ -38,6 +38,18 @@ class SessionManager:
         
         if 'cultural_explanations' not in st.session_state:
             st.session_state.cultural_explanations = {}
+        
+        if 'demo_mode' not in st.session_state:
+            st.session_state.demo_mode = False
+        
+        if 'demo_prompt' not in st.session_state:
+            st.session_state.demo_prompt = ""
+        
+        if 'temp_prompt' not in st.session_state:
+            st.session_state.temp_prompt = ""
+        
+        if 'taste_suggestions' not in st.session_state:
+            st.session_state.taste_suggestions = []
     
     @staticmethod
     def add_story_entry(content: str, entry_type: str, metadata: Dict = None):
