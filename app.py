@@ -1,13 +1,150 @@
+#!/usr/bin/env python3
+"""
+Narravox - Collaborative Story Generator
+Production-ready application with enhanced security
+"""
+
 import streamlit as st
 import os
-from typing import Dict, List
-import json
+import re
+from dotenv import load_dotenv
+import secrets
+import hashlib
+import time
 
-# Import custom modules
+# Security: Load environment variables securely
+load_dotenv()
+
+# Security: Import services after environment setup
 from api.perplexity_service import PerplexityService
 from api.qloo_service import QlooService
 from utils.session_manager import SessionManager
-from utils.export_utils import ExportUtils
+from utils.export_utils import create_story_text, create_story_pdf
+
+# Security: Add security headers and validation
+def add_security_headers():
+    """Add security headers to prevent common attacks."""
+    st.markdown("""
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    """, unsafe_allow_html=True)
+
+def validate_input(text: str, max_length: int = 1000) -> tuple[bool, str]:
+    """
+    Validate user input for security and content.
+    
+    Args:
+        text: Input text to validate
+        max_length: Maximum allowed length
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not text or not text.strip():
+        return False, "Input cannot be empty"
+    
+    if len(text) > max_length:
+        return False, f"Input too long. Maximum {max_length} characters allowed."
+    
+    # Security: Check for potentially malicious content
+    dangerous_patterns = [
+        r'<script[^>]*>',  # Script tags
+        r'javascript:',     # JavaScript protocol
+        r'on\w+\s*=',      # Event handlers
+        r'data:text/html', # Data URLs
+        r'vbscript:',      # VBScript
+        r'<iframe[^>]*>',  # Iframe tags
+    ]
+    
+    for pattern in dangerous_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            return False, "Input contains potentially unsafe content"
+    
+    return True, ""
+
+def sanitize_text(text: str) -> str:
+    """
+    Sanitize text input for safe display.
+    
+    Args:
+        text: Text to sanitize
+        
+    Returns:
+        Sanitized text
+    """
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    
+    # Escape special characters
+    text = text.replace('&', '&amp;')
+    text = text.replace('<', '&lt;')
+    text = text.replace('>', '&gt;')
+    text = text.replace('"', '&quot;')
+    text = text.replace("'", '&#x27;')
+    
+    return text
+
+def rate_limit_check(user_id: str, action: str, max_attempts: int = 5, window_seconds: int = 60) -> bool:
+    """
+    Implement rate limiting for API calls.
+    
+    Args:
+        user_id: Unique identifier for the user
+        action: Type of action being rate limited
+        max_attempts: Maximum attempts allowed
+        window_seconds: Time window in seconds
+        
+    Returns:
+        True if allowed, False if rate limited
+    """
+    if 'rate_limits' not in st.session_state:
+        st.session_state.rate_limits = {}
+    
+    current_time = time.time()
+    key = f"{user_id}_{action}"
+    
+    if key not in st.session_state.rate_limits:
+        st.session_state.rate_limits[key] = []
+    
+    # Remove old attempts
+    st.session_state.rate_limits[key] = [
+        attempt_time for attempt_time in st.session_state.rate_limits[key]
+        if current_time - attempt_time < window_seconds
+    ]
+    
+    # Check if limit exceeded
+    if len(st.session_state.rate_limits[key]) >= max_attempts:
+        return False
+    
+    # Add current attempt
+    st.session_state.rate_limits[key].append(current_time)
+    return True
+
+def generate_csrf_token() -> str:
+    """Generate a CSRF token for form protection."""
+    if 'csrf_token' not in st.session_state:
+        st.session_state.csrf_token = secrets.token_urlsafe(32)
+    return st.session_state.csrf_token
+
+def validate_csrf_token(token: str) -> bool:
+    """Validate CSRF token."""
+    return token == st.session_state.get('csrf_token', '')
+
+# Security: Enhanced session initialization
+def initialize_secure_session():
+    """Initialize session with security measures."""
+    if 'session_id' not in st.session_state:
+        st.session_state.session_id = secrets.token_urlsafe(16)
+    
+    if 'security_level' not in st.session_state:
+        st.session_state.security_level = 'high'
+    
+    # Initialize rate limiting
+    if 'rate_limits' not in st.session_state:
+        st.session_state.rate_limits = {}
 
 # Enhanced Swiss Design CSS styling
 def apply_swiss_design():
@@ -15,8 +152,8 @@ def apply_swiss_design():
     <style>
     /* Global Styles */
     .main .block-container {
-        padding-top: 0.8rem;
-        padding-bottom: 0.8rem;
+        padding-top: 0.3rem;
+        padding-bottom: 0.3rem;
         max-width: 1200px;
     }
     
@@ -58,9 +195,9 @@ def apply_swiss_design():
     /* Story Content */
     .story-content {
         background-color: #FAFAFA;
-        padding: 0.8rem;
+        padding: 0.4rem;
         border-left: 4px solid #000000;
-        margin: 0.5rem 0;
+        margin: 0.3rem 0;
         font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
         line-height: 1.6;
         font-size: 1rem;
@@ -77,9 +214,9 @@ def apply_swiss_design():
     /* Cultural Insights */
     .cultural-insight {
         background-color: #F8F8F8;
-        padding: 0.6rem;
+        padding: 0.3rem;
         border: 1px solid #E0E0E0;
-        margin: 0.4rem 0;
+        margin: 0.2rem 0;
         font-size: 0.9rem;
         color: #555555;
         line-height: 1.5;
@@ -97,171 +234,234 @@ def apply_swiss_design():
         font-size: 0.8rem;
         color: #888888;
         text-align: right;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.2rem;
+    }
+    
+    /* Button Styling - Consistent Swiss Design */
+    .stButton > button {
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
+        border: 2px solid #000000 !important;
+        border-radius: 0 !important;
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif !important;
+        font-weight: 400 !important;
+        font-size: 0.9rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.1em !important;
+        padding: 0.3rem 0.8rem !important;
+        transition: all 0.2s ease !important;
+        box-shadow: none !important;
+        min-height: 44px !important;
+    }
+    
+    .stButton > button:hover {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border-color: #000000 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+    
+    .stButton > button:disabled {
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
+        border-color: #000000 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    
+    .stButton > button:active {
+        transform: translateY(0) !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    }
+    
+    /* Text Input Styling */
+    .stTextArea textarea, .stTextInput input {
+        border: 2px solid #E0E0E0 !important;
+        border-radius: 0 !important;
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif !important;
+        font-size: 0.9rem !important;
+        padding: 0.3rem !important;
+        background-color: #FFFFFF !important;
+        transition: border-color 0.2s ease !important;
+    }
+    
+    .stTextArea textarea:focus, .stTextInput input:focus {
+        border-color: #000000 !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    
+    /* Sidebar Styling - Always Visible */
+    .css-1d391kg {
+        background-color: #F8F8F8 !important;
+        border-right: 2px solid #E0E0E0 !important;
+    }
+    
+    /* Progress Bar Styling */
+    .stProgress > div > div > div > div {
+        background-color: #000000 !important;
+    }
+    
+    /* Metric Styling */
+    .css-1wivap2 {
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif !important;
+        font-weight: 400 !important;
+    }
+    
+    /* Form Accessibility */
+    .stTextArea textarea, .stTextInput input {
+        autocomplete: "off";
+    }
+    
+    /* Ensure proper label associations */
+    .stTextArea label, .stTextInput label {
+        display: block;
+        margin-bottom: 0.3rem;
+        font-weight: 500;
+        color: #000000;
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
+    }
+    
+    /* Form field IDs and names */
+    .stTextArea textarea, .stTextInput input {
+        id: attr(data-testid);
+        name: attr(data-testid);
+    }
+    
+    /* Autocomplete attributes */
+    .stTextArea textarea[data-testid="story_prompt_input"] {
+        autocomplete: "off";
+    }
+    
+    .stTextInput input[data-testid="music_prefs_input"] {
+        autocomplete: "off";
+    }
+    
+    .stTextInput input[data-testid="film_prefs_input"] {
+        autocomplete: "off";
+    }
+    
+    .stTextInput input[data-testid="book_prefs_input"] {
+        autocomplete: "off";
+    }
+    
+    .stTextInput input[data-testid="travel_prefs_input"] {
+        autocomplete: "off";
+    }
+    
+    .stTextInput input[data-testid="brand_prefs_input"] {
+        autocomplete: "off";
+    }
+    
+    .stTextInput input[data-testid="other_prefs_input"] {
+        autocomplete: "off";
+    }
+    
+    .stTextArea textarea[data-testid="story_continuation_input"] {
+        autocomplete: "off";
+    }
+    
+    /* Footer Styling - Swiss Design */
+    .element-container .stMarkdown {
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
+    }
+    
+    /* Footer links styling */
+    .element-container .stMarkdown a {
+        color: #000000;
+        text-decoration: none;
+        font-weight: 400;
+        transition: color 0.2s ease;
+    }
+    
+    .element-container .stMarkdown a:hover {
+        color: #666666;
+        text-decoration: underline;
+    }
+    
+    /* Footer captions */
+    .element-container .stCaption {
+        color: #888888;
+        font-size: 0.8rem;
+        font-weight: 300;
+    }
+    
+    /* Footer column spacing - more aggressive */
+    .element-container .row-widget.stHorizontal {
+        gap: 0.1rem !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Footer content spacing */
+    .element-container .stMarkdown {
+        margin-bottom: 0.05rem !important;
+        margin-top: 0.05rem !important;
+    }
+    
+    /* Footer container spacing */
+    .element-container {
+        margin-bottom: 0.2rem !important;
+    }
+    
+    /* Specific footer column targeting */
+    .element-container .stHorizontal > div {
+        padding: 0 0.2rem !important;
+    }
+    
+    /* Loading States */
+    .loading-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background-color: #FAFAFA;
+        border: 1px solid #E0E0E0;
+        margin: 1rem 0;
+    }
+    
+    .loading-text {
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
+        font-size: 0.9rem;
+        color: #666666;
         text-transform: uppercase;
         letter-spacing: 0.1em;
     }
     
-    /* Buttons */
-    .stButton > button {
-        background-color: #000000;
-        color: #FFFFFF;
-        border: none;
-        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-weight: 400;
-        letter-spacing: 0.05em;
-        padding: 0.4rem 1rem;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        border-radius: 0;
+    /* Success/Error Messages */
+    .stAlert {
+        border-radius: 0 !important;
+        border-left: 4px solid !important;
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif !important;
     }
     
-    .stButton > button:hover {
-        background-color: #333333;
-        color: #FFFFFF;
-    }
-    
-    .stButton > button:active {
-        background-color: #000000;
-    }
-    
-    /* Text Areas and Inputs */
-    .stTextArea textarea {
-        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-size: 0.95rem;
-        line-height: 1.5;
-        border-radius: 0;
-        border: 2px solid #E0E0E0;
-        padding: 0.5rem;
-    }
-    
-    .stTextArea textarea:focus {
-        border-color: #000000;
-        box-shadow: 0 0 0 1px #000000;
-    }
-    
-    .stTextInput input {
-        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        border-radius: 0;
-        border: 1px solid #CCCCCC;
-        padding: 0.4rem;
-    }
-    
-    .stTextInput input:focus {
-        border-color: #000000;
-        box-shadow: 0 0 0 1px #000000;
-    }
-    
-    /* Sidebar Styling */
-    .css-1d391kg {
-        background-color: #F8F8F8;
-    }
-    
-    .css-1d391kg .stMarkdown {
-        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-    }
-    
-    /* Expanders */
+    /* Expander Styling */
     .streamlit-expanderHeader {
-        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-weight: 500;
-        color: #000000;
-        font-size: 1.1rem;
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif !important;
+        font-weight: 500 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.1em !important;
+        color: #000000 !important;
+        border-bottom: 1px solid #E0E0E0 !important;
     }
     
-    /* Progress and Status */
-    .stProgress .st-bo {
-        background-color: #000000;
+    /* Checkbox Styling */
+    .stCheckbox > label {
+        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif !important;
+        font-size: 0.9rem !important;
+        color: #333333 !important;
     }
     
-    .stSuccess {
-        background-color: #F0F8F0;
-        color: #2D5A2D;
-        border-left: 4px solid #4CAF50;
-    }
-    
-    .stError {
-        background-color: #FFF5F5;
-        color: #C53030;
-        border-left: 4px solid #E53E3E;
-    }
-    
-    .stInfo {
-        background-color: #F0F8FF;
-        color: #1A365D;
-        border-left: 4px solid #3182CE;
-    }
-    
-    /* Custom Grid Layouts */
-    .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.2rem;
-        margin: 1.2rem 0;
-    }
-    
-    .feature-card {
-        background-color: #FFFFFF;
-        border: 1px solid #E0E0E0;
-        padding: 1.2rem;
-        text-align: center;
-    }
-    
-    .feature-card h3 {
-        font-family: 'Helvetica Neue', 'Helvetica', Arial, sans-serif;
-        font-weight: 500;
-        font-size: 1.2rem;
-        margin-bottom: 1rem;
-        color: #000000;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .main-header {
-            font-size: 1.8rem;
-        }
-        
-        .story-content {
-            padding: 0.8rem;
-        }
-        
-        .stButton > button {
-            padding: 0.4rem 1rem;
-            font-size: 0.8rem;
-        }
-    }
-    
-    /* Hide Streamlit Branding and Links */
+    /* Hide Streamlit Default Elements */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Remove header anchor links */
-    .main-header a {
-        text-decoration: none !important;
-        color: #000000 !important;
-        pointer-events: none;
-    }
-    
-    .main-header a:hover {
-        text-decoration: none !important;
-        color: #000000 !important;
-    }
-    
-    /* Hide all header link icons */
-    .element-container .stMarkdown h1 a,
-    .element-container .stMarkdown h2 a,
-    .element-container .stMarkdown h3 a {
-        display: none !important;
-    }
-    
-    /* Remove hover effects on headers */
-    .element-container .stMarkdown h1:hover::after,
-    .element-container .stMarkdown h2:hover::after,
-    .element-container .stMarkdown h3:hover::after {
-        display: none !important;
+    /* Smooth Transitions */
+    * {
+        transition: all 0.2s ease;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -275,22 +475,29 @@ def initialize_services():
             
             # Test API connectivity
             if st.session_state.perplexity_service.api_key:
-                st.session_state.api_status = "✅ APIs initialized"
+                st.session_state.api_status = "APIs initialized"
             else:
-                st.session_state.api_status = "⚠️ API keys missing"
+                st.session_state.api_status = "API keys missing"
                 
     except Exception as e:
-        st.error(f"❌ Failed to initialize services: {str(e)}")
+        st.error(f"Failed to initialize services: {str(e)}")
         st.write("Please check your API keys in the environment variables.")
-        st.session_state.api_status = "❌ Service initialization failed"
+        st.session_state.api_status = "Service initialization failed"
 
 def main():
+    # Security: Add security headers
+    add_security_headers()
+    
     # Apply Swiss Design styling
     apply_swiss_design()
     
-    # Initialize session and services
-    SessionManager.init_session()
-    initialize_services()
+    # Initialize session and services with error handling
+    try:
+        initialize_secure_session()
+        initialize_services()
+    except Exception as e:
+        st.error(f"Failed to initialize application: {str(e)}")
+        st.stop()
     
     # Main header - using div instead of h1 to avoid anchor links
     st.markdown('''
@@ -298,7 +505,7 @@ def main():
     <div class="tagline">Vocalize Worlds Woven from Cultural Affinities</div>
     ''', unsafe_allow_html=True)
     
-    # Enhanced Sidebar for controls and information
+    # Enhanced Sidebar for controls and information - Always visible
     with st.sidebar:
         st.markdown("### SESSION OVERVIEW")
         stats = SessionManager.get_session_stats()
@@ -324,12 +531,12 @@ def main():
         # Enhanced action buttons
         st.markdown("### ACTIONS")
         
-        if st.button("NEW STORY", use_container_width=True):
+        if st.button("NEW STORY", key="new_story_button", use_container_width=True):
             SessionManager.reset_session()
             st.rerun()
         
         if st.session_state.story_started:
-            if st.button("EXPORT STORY", use_container_width=True):
+            if st.button("EXPORT STORY", key="export_story_button", use_container_width=True):
                 show_export_options()
         
         st.markdown("---")
@@ -354,7 +561,7 @@ def main():
     # Error display
     if st.session_state.last_error:
         st.error(f"Error: {st.session_state.last_error['message']}")
-        if st.button("Clear Error"):
+        if st.button("Clear Error", key="clear_error_button"):
             SessionManager.clear_error()
             st.rerun()
     
@@ -363,6 +570,9 @@ def main():
         show_story_initiation()
     else:
         show_story_interface()
+    
+    # Add professional footer
+    show_footer()
 
 def show_story_initiation():
     """Display enhanced story initiation interface."""
@@ -372,8 +582,8 @@ def show_story_initiation():
     st.markdown("""
     <div style="background-color: #F8F8F8; padding: 0.8rem; border-left: 4px solid #000000; margin: 0.8rem 0;">
         <p style="font-size: 1rem; line-height: 1.5; margin: 0; color: #333333;">
-            Create narratives enriched with cultural intelligence. Stories are enhanced with 
-            cross-domain affinities connecting music, film, travel, and lifestyle elements.
+            Create narratives enriched with cultural intelligence using Qloo's Insights API. Stories are enhanced with 
+            cross-domain affinities discovered through Taste Analysis, connecting music, film, travel, and lifestyle elements.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -381,49 +591,72 @@ def show_story_initiation():
     # Taste profile builder with enhanced styling
     with st.expander("BUILD CULTURAL TASTE PROFILE", expanded=False):
         show_taste_profile_builder()
+        
+        # Show if taste profile is active
+        if hasattr(st.session_state, 'user_preferences') and st.session_state.user_preferences:
+            st.success("Cultural profile active - will enhance your story generation")
+            user_prefs = st.session_state.user_preferences
+            pref_list = []
+            for category, items in user_prefs.items():
+                if items:
+                    pref_list.extend(items[:1])  # Show one from each category
+            if pref_list:
+                st.info(f"Preferences: {', '.join(pref_list[:5])}")
     
     # Enhanced story prompt input
     st.markdown("### Story Prompt")
+    
+    # Handle demo prompt if set
+    default_prompt = ""
+    if hasattr(st.session_state, 'demo_prompt'):
+        default_prompt = st.session_state.demo_prompt
+        # Clear the demo prompt after using it
+        del st.session_state.demo_prompt
+    
     story_prompt = st.text_area(
         "Describe the story you want to create:",
+        value=default_prompt,
+        key="story_prompt_input",
         placeholder="Enter your story concept here. Include genres, themes, cultural elements, or specific interests. For example: 'A cyberpunk thriller with jazz influences set in a futuristic Tokyo where vintage vinyl records hold digital secrets.'",
         height=80,
-        help="The more cultural elements you include, the richer your story will become through Qloo's AI enrichment."
+        help="The more cultural elements you include, the richer your story will become through Qloo's AI enrichment.",
+        on_change=None,
+        label_visibility="visible"
     )
     
-    # Enhanced action area
-    col1, col2, col3 = st.columns([2, 1, 2])
+    # Enhanced action area - buttons side by side
+    col1, col2 = st.columns(2)
     
-    with col2:
-        if st.button("BEGIN STORY", disabled=not story_prompt.strip(), use_container_width=True):
+    with col1:
+        if st.button("BEGIN STORY", key="begin_story_button", disabled=not story_prompt.strip(), use_container_width=True):
             try:
                 with st.spinner("Creating your story..."):
-                    # Check if services are available
-                    if not hasattr(st.session_state, 'perplexity_service') or not hasattr(st.session_state, 'qloo_service'):
-                        st.error("❌ Services not initialized. Please refresh the page.")
-                        return
-                    
-                    # Create the story
                     create_story_opener(story_prompt)
-                    
             except Exception as e:
-                st.error(f"❌ Error creating story: {str(e)}")
-                st.write("Please check your API keys and internet connection.")
+                st.error(f"Failed to create story: {str(e)}")
+    
+    with col2:
+        if st.button("SURPRISE ME", key="surprise_me_button", use_container_width=True):
+            try:
+                with st.spinner("Generating surprise story..."):
+                    surprise_continuation()
+            except Exception as e:
+                st.error(f"Failed to generate surprise: {str(e)}")
     
     # Quick examples for inspiration
-    if not story_prompt:
-        st.markdown("### Need Inspiration?")
-        example_col1, example_col2 = st.columns(2)
-        
-        with example_col1:
-            if st.button("CYBERPUNK + JAZZ", use_container_width=True):
-                st.session_state.temp_prompt = "A cyberpunk thriller with jazz influences in Neo-Tokyo"
-                st.rerun()
-        
-        with example_col2:
-            if st.button("ROMANCE + VINYL", use_container_width=True):
-                st.session_state.temp_prompt = "A romantic comedy involving vintage vinyl records and food trucks"
-                st.rerun()
+    st.markdown("### Need Inspiration?")
+    
+    # Inspiration buttons in a clean grid
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("CYBERPUNK + JAZZ", key="cyberpunk_jazz_button", use_container_width=True):
+            st.session_state.demo_prompt = "A cyberpunk thriller with jazz influences set in a futuristic Tokyo where vintage vinyl records hold digital secrets."
+            st.rerun()
+    
+    with col2:
+        if st.button("ROMANCE + VINYL", key="romance_vinyl_button", use_container_width=True):
+            st.session_state.demo_prompt = "A romantic story about two people who fall in love through their shared passion for vinyl records and indie music."
+            st.rerun()
     
     # Handle temp prompt
     if hasattr(st.session_state, 'temp_prompt'):
@@ -431,81 +664,169 @@ def show_story_initiation():
         del st.session_state.temp_prompt
 
 def show_taste_profile_builder():
-    """Display taste profile builder interface."""
-    st.write("Tell us about your preferences to enrich your story with cultural insights:")
+    """Display enhanced taste profile builder interface."""
+    st.markdown("### Cultural Preferences")
     
+    # Input fields for different categories
     col1, col2 = st.columns(2)
     
     with col1:
-        music_prefs = st.text_input("Music you enjoy:")
-        film_prefs = st.text_input("Favorite films/genres:")
-        book_prefs = st.text_input("Books you love:")
+        music_prefs = st.text_input("Music Genres", key="music_prefs_input", placeholder="jazz, classical, electronic", on_change=None, label_visibility="visible")
+        film_prefs = st.text_input("Film Genres", key="film_prefs_input", placeholder="sci-fi, noir, arthouse", on_change=None, label_visibility="visible")
+        book_prefs = st.text_input("Book Genres", key="book_prefs_input", placeholder="mystery, fantasy, literary", on_change=None, label_visibility="visible")
     
     with col2:
-        travel_prefs = st.text_input("Places you'd visit:")
-        brand_prefs = st.text_input("Brands you like:")
-        other_prefs = st.text_input("Other interests:")
+        travel_prefs = st.text_input("Travel Interests", key="travel_prefs_input", placeholder="japan, vintage, urban", on_change=None, label_visibility="visible")
+        brand_prefs = st.text_input("Lifestyle Brands", key="brand_prefs_input", placeholder="minimalist, sustainable, luxury", on_change=None, label_visibility="visible")
+        other_prefs = st.text_input("Other Interests", key="other_prefs_input", placeholder="meditation, badminton", on_change=None, label_visibility="visible")
     
-    if st.button("Build Profile"):
-        preferences = {
-            "music": music_prefs.split(",") if music_prefs else [],
-            "film": film_prefs.split(",") if film_prefs else [],
-            "books": book_prefs.split(",") if book_prefs else [],
-            "travel": travel_prefs.split(",") if travel_prefs else [],
-            "brands": brand_prefs.split(",") if brand_prefs else [],
-            "other": other_prefs.split(",") if other_prefs else []
-        }
-        
-        # Clean up preferences
-        preferences = {k: [item.strip() for item in v if item.strip()] for k, v in preferences.items()}
-        st.session_state.user_preferences = preferences
-        
-        # Get Qloo suggestions
-        profile_result = st.session_state.qloo_service.get_taste_profile_suggestions(preferences)
-        
-        if profile_result["success"]:
-            st.success("Profile created! Your cultural affinities will enrich your stories.")
-            if profile_result.get("suggestions"):
-                st.write("Story suggestions based on your profile:")
-                for suggestion in profile_result["suggestions"]:
-                    st.write(f"• {suggestion}")
-        else:
-            st.warning("Could not generate full profile, but your preferences are saved.")
+    # Build profile button
+    if st.button("BUILD PROFILE", key="build_profile_button", use_container_width=True):
+        try:
+            # Security: Rate limiting for profile building
+            user_id = st.session_state.get('session_id', 'anonymous')
+            if not rate_limit_check(user_id, 'profile_building', max_attempts=3, window_seconds=120):
+                st.error("Rate limit exceeded. Please wait before building another profile.")
+                return
+            
+            with st.spinner("Building your cultural profile..."):
+                # Check if Qloo service is available
+                if not hasattr(st.session_state, 'qloo_service'):
+                    st.error("Cultural service not available. Please refresh the page.")
+                    return
+                
+                # Security: Validate and sanitize preferences
+                def sanitize_preferences(pref_list):
+                    sanitized = []
+                    for pref in pref_list:
+                        # Validate each preference
+                        is_valid, _ = validate_input(pref, max_length=50)
+                        if is_valid:
+                            sanitized.append(sanitize_text(pref.strip()))
+                    return sanitized
+                
+                # Collect and sanitize preferences
+                preferences = {
+                    "music": sanitize_preferences([x.strip() for x in music_prefs.split(",") if x.strip()]) if music_prefs else [],
+                    "film": sanitize_preferences([x.strip() for x in film_prefs.split(",") if x.strip()]) if film_prefs else [],
+                    "books": sanitize_preferences([x.strip() for x in book_prefs.split(",") if x.strip()]) if book_prefs else [],
+                    "travel": sanitize_preferences([x.strip() for x in travel_prefs.split(",") if x.strip()]) if travel_prefs else [],
+                    "brands": sanitize_preferences([x.strip() for x in brand_prefs.split(",") if x.strip()]) if brand_prefs else [],
+                    "other": sanitize_preferences([x.strip() for x in other_prefs.split(",") if x.strip()]) if other_prefs else []
+                }
+                
+                # Generate profile
+                result = st.session_state.qloo_service.get_taste_profile_suggestions(preferences)
+                
+                if result["success"]:
+                    # Check if this was from Qloo API or fallback
+                    if result.get("source") == "qloo_api":
+                        st.success("Qloo Insights API profile created successfully")
+                        st.info("Cultural affinities enriched through Taste Analysis")
+                    else:
+                        st.success("Profile created from your preferences")
+                        st.info("Using enhanced cultural analysis for your story suggestions")
+                    
+                    # Store both preferences and suggestions
+                    st.session_state.user_preferences = preferences
+                    if "suggestions" in result:
+                        st.session_state.taste_suggestions = result["suggestions"]
+                    
+                    # Display suggestions
+                    if st.session_state.taste_suggestions:
+                        st.markdown("### Story Suggestions")
+                        for i, suggestion in enumerate(st.session_state.taste_suggestions[:3]):
+                            st.markdown(f"• {suggestion}")
+                    
+                    st.rerun()
+                else:
+                    st.warning(f"Could not generate profile: {result.get('error', 'Unknown error')}")
+                    
+        except Exception as e:
+            st.error(f"Profile generation failed: {str(e)}")
+            st.write("Please check your internet connection and try again.")
 
 def create_story_opener(prompt: str):
-    """Create the initial story using Perplexity and Qloo."""
+    """Create the initial story using Perplexity and Qloo with security measures."""
+    
+    # Security: Input validation
+    is_valid, error_msg = validate_input(prompt, max_length=500)
+    if not is_valid:
+        st.error(f"Input validation failed: {error_msg}")
+        return
+    
+    # Security: Rate limiting
+    user_id = st.session_state.get('session_id', 'anonymous')
+    if not rate_limit_check(user_id, 'story_generation', max_attempts=3, window_seconds=60):
+        st.error("Rate limit exceeded. Please wait before generating another story.")
+        return
+    
+    # Security: Sanitize input
+    sanitized_prompt = sanitize_text(prompt)
+    
     try:
         # Check if services are initialized
         if not hasattr(st.session_state, 'qloo_service') or not hasattr(st.session_state, 'perplexity_service'):
-            st.error("❌ Services not initialized. Please refresh the page.")
+            st.error("Services not initialized. Please refresh the page.")
             return
         
-        # Get cultural context from Qloo
+        # Get cultural context from Qloo - enhanced with taste profile
         cultural_context = ""
         try:
-            cultural_context = st.session_state.qloo_service.create_cultural_context(prompt)
+            # First, try to use taste profile if available
+            if hasattr(st.session_state, 'user_preferences') and st.session_state.user_preferences:
+                # Use actual user preferences to enhance the prompt
+                user_prefs = st.session_state.user_preferences
+                pref_list = []
+                for category, items in user_prefs.items():
+                    if items:
+                        pref_list.extend(items[:2])  # Take top 2 from each category
+                
+                if pref_list:
+                    # Ensure we include preferences from all categories, prioritizing non-empty ones
+                    all_prefs = []
+                    for category, items in user_prefs.items():
+                        if items:
+                            all_prefs.extend(items)
+                    
+                    enhanced_prompt = f"{sanitized_prompt} (Cultural preferences: {', '.join(all_prefs[:8])})"
+                    cultural_context = st.session_state.qloo_service.create_cultural_context(enhanced_prompt)
+                    SessionManager.add_cultural_explanation(
+                        "Taste Profile Integration",
+                        f"Enhanced story with your cultural preferences: {', '.join(all_prefs[:8])}"
+                    )
+                else:
+                    # Fallback to extracting from prompt only
+                    cultural_context = st.session_state.qloo_service.create_cultural_context(sanitized_prompt)
+            else:
+                # Fallback to extracting from prompt only
+                cultural_context = st.session_state.qloo_service.create_cultural_context(sanitized_prompt)
+            
             if cultural_context:
                 SessionManager.set_cultural_context(cultural_context)
                 SessionManager.add_cultural_explanation(
                     "Story Cultural Elements",
-                    f"Qloo identified these cultural affinities: {cultural_context}"
+                    f"Qloo Insights API identified these cultural affinities through Taste Analysis: {cultural_context}"
                 )
         except Exception as e:
-            st.warning(f"⚠️ Cultural context unavailable: {str(e)}")
+            st.warning(f"Cultural context unavailable: {str(e)}")
         
         # Generate story opener with Perplexity
-        result = st.session_state.perplexity_service.generate_story_opener(prompt, cultural_context)
+        result = st.session_state.perplexity_service.generate_story_opener(sanitized_prompt, cultural_context)
         
         if result["success"]:
+            # Security: Sanitize AI response before storing
+            sanitized_content = sanitize_text(result["content"])
+            
             # Add entries to story
-            SessionManager.add_story_entry(prompt, "user")
-            SessionManager.add_story_entry(result["content"], "ai")
+            SessionManager.add_story_entry(sanitized_prompt, "user")
+            SessionManager.add_story_entry(sanitized_content, "ai")
             SessionManager.increment_turn()
             st.session_state.story_started = True
-            st.success("✅ Story created successfully!")
+            st.success("Story created successfully!")
             st.rerun()
         else:
-            st.error(f"❌ Story generation failed: {result['error']}")
+            st.error(f"Story generation failed: {result['error']}")
             SessionManager.set_error(result["error"])
             
     except Exception as e:
@@ -550,7 +871,7 @@ def show_story_interface():
     # Enhanced cultural insights panel
     if st.session_state.cultural_explanations:
         with st.expander("CULTURAL INTELLIGENCE INSIGHTS", expanded=True):
-            st.markdown("Qloo AI has discovered these cultural connections in your story:")
+            st.markdown("Qloo Insights API has discovered these cultural connections through Taste Analysis:")
             for key, explanation in st.session_state.cultural_explanations.items():
                 st.markdown(f'<div class="cultural-insight"><strong>{key}:</strong> {explanation}</div>', 
                            unsafe_allow_html=True)
@@ -571,60 +892,109 @@ def show_story_interface():
     # Input area with better layout
     user_input = st.text_area(
         "Continue your narrative:",
+        key="story_continuation_input",
         placeholder="What happens next in your story? Describe actions, dialogue, or new elements to explore...",
         height=80,
-        key="story_input",
-        help="Your input will be enriched with cultural context automatically."
+        help="Add details, dialogue, or new plot elements to continue the story.",
+        on_change=None,
+        label_visibility="visible"
     )
     
-    # Action buttons in a clean layout
-    col1, col2, col3, col4 = st.columns(4)
+    # Action buttons with loading states
+    col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
-        if st.button("CONTINUE STORY", disabled=not user_input.strip(), use_container_width=True):
-            continue_story(user_input)
+        if st.button("CONTINUE STORY", key="continue_story_button", disabled=not user_input.strip(), use_container_width=True):
+            try:
+                with st.spinner("Continuing your story..."):
+                    continue_story(user_input)
+            except Exception as e:
+                st.error(f"Failed to continue story: {str(e)}")
     
     with col2:
-        if st.button("GET OPTIONS", use_container_width=True):
-            generate_branching_options()
+        if st.button("GENERATE OPTIONS", key="generate_options_button", use_container_width=True):
+            try:
+                with st.spinner("Generating story options..."):
+                    generate_branching_options()
+            except Exception as e:
+                st.error(f"Failed to generate options: {str(e)}")
     
     with col3:
-        if st.button("ENHANCE CULTURE", use_container_width=True):
-            enhance_with_culture()
-    
-    with col4:
-        if st.button("SURPRISE ME", use_container_width=True):
-            surprise_continuation()
+        if st.button("ENHANCE CULTURE", key="enhance_culture_button", use_container_width=True):
+            try:
+                with st.spinner("Enhancing with cultural context..."):
+                    enhance_with_culture()
+            except Exception as e:
+                st.error(f"Failed to enhance culture: {str(e)}")
 
 def show_branching_options():
     """Display branching narrative options."""
-    st.markdown('<div class="section-header">Choose Your Path</div>', unsafe_allow_html=True)
+    if not st.session_state.branching_options:
+        return
     
+    st.markdown('<div class="section-header">Story Branching Options</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div style="background-color: #F8F8F8; padding: 0.8rem; border-left: 4px solid #000000; margin: 0.8rem 0;">
+        <p style="font-size: 0.9rem; line-height: 1.5; margin: 0; color: #666666;">
+            Choose a direction for your story to continue:
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Display options in a clean grid
     for i, option in enumerate(st.session_state.branching_options):
-        if st.button(f"Option {i+1}: {option}", key=f"option_{i}"):
-            continue_story(option, is_branching_choice=True)
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.markdown(f'<div class="story-content">{option}</div>', unsafe_allow_html=True)
+        with col2:
+            if st.button(f"CHOOSE {i+1}", key=f"branch_{i}", use_container_width=True):
+                try:
+                    with st.spinner("Continuing with your choice..."):
+                        continue_story(option, is_branching_choice=True)
+                except Exception as e:
+                    st.error(f"Failed to continue with choice: {str(e)}")
 
 def continue_story(user_input: str, is_branching_choice: bool = False):
-    """Continue the story with user input."""
+    """Continue the story with user input and security measures."""
+    
+    # Security: Input validation
+    is_valid, error_msg = validate_input(user_input, max_length=500)
+    if not is_valid:
+        st.error(f"Input validation failed: {error_msg}")
+        return
+    
+    # Security: Rate limiting
+    user_id = st.session_state.get('session_id', 'anonymous')
+    if not rate_limit_check(user_id, 'story_continuation', max_attempts=5, window_seconds=30):
+        st.error("Rate limit exceeded. Please wait before continuing the story.")
+        return
+    
+    # Security: Sanitize input
+    sanitized_input = sanitize_text(user_input)
+    
     try:
         # Check if services are available
         if not hasattr(st.session_state, 'perplexity_service'):
             st.error("❌ Perplexity service not available. Please refresh the page.")
             return
         
-        # Add user input to history
+        # Add user input to history (sanitized)
         if not is_branching_choice:
-            SessionManager.add_story_entry(user_input, "user")
+            SessionManager.add_story_entry(sanitized_input, "user")
         
         # Get AI continuation
         result = st.session_state.perplexity_service.continue_story(
             st.session_state.story_history,
-            user_input,
+            sanitized_input,
             st.session_state.cultural_context
         )
         
         if result["success"]:
-            SessionManager.add_story_entry(result["content"], "ai")
+            # Security: Sanitize AI response before storing
+            sanitized_content = sanitize_text(result["content"])
+            
+            SessionManager.add_story_entry(sanitized_content, "ai")
             SessionManager.increment_turn()
             
             # Clear branching options and input
@@ -632,14 +1002,14 @@ def continue_story(user_input: str, is_branching_choice: bool = False):
             
             # Enhance with new cultural context if entities found
             try:
-                enhance_story_with_new_culture(user_input)
+                enhance_story_with_new_culture(sanitized_input)
             except Exception as e:
-                st.warning(f"⚠️ Cultural enhancement failed: {str(e)}")
+                st.warning(f"Cultural enhancement failed: {str(e)}")
             
-            st.success("✅ Story continued successfully!")
+            st.success("Story continued successfully!")
             st.rerun()
         else:
-            st.error(f"❌ Story continuation failed: {result['error']}")
+            st.error(f"Story continuation failed: {result['error']}")
             SessionManager.set_error(result["error"])
             
     except Exception as e:
@@ -663,10 +1033,10 @@ def generate_branching_options():
         
         if result["success"]:
             st.session_state.branching_options = result["options"]
-            st.success("✅ Story options generated!")
+            st.success("Story options generated!")
             st.rerun()
         else:
-            st.error(f"❌ Failed to generate options: {result['error']}")
+            st.error(f"Failed to generate options: {result['error']}")
             SessionManager.set_error(result["error"])
             
     except Exception as e:
@@ -738,8 +1108,8 @@ def show_export_options():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("Download Text"):
-            text_content = ExportUtils.create_story_text(story_data)
+        if st.button("Download Text", key="download_text_button"):
+            text_content = create_story_text(story_data)
             st.download_button(
                 label="Download Story.txt",
                 data=text_content,
@@ -748,9 +1118,9 @@ def show_export_options():
             )
     
     with col2:
-        if st.button("Download PDF"):
+        if st.button("Download PDF", key="download_pdf_button"):
             try:
-                pdf_path = ExportUtils.create_story_pdf(story_data)
+                pdf_path = create_story_pdf(story_data)
                 with open(pdf_path, "rb") as pdf_file:
                     st.download_button(
                         label="Download Story.pdf",
@@ -758,29 +1128,32 @@ def show_export_options():
                         file_name=f"narravox_story_{story_data['session_id'][:8]}.pdf",
                         mime="application/pdf"
                     )
-                ExportUtils.cleanup_temp_file(pdf_path)
+                # Cleanup is handled by create_story_pdf if it uses a temporary file
             except Exception as e:
                 st.error(f"PDF generation failed: {str(e)}")
     
     with col3:
-        if st.button("Copy Share Link"):
+        if st.button("Copy Share Link", key="copy_share_link_button"):
             share_link = ExportUtils.create_shareable_link(story_data['session_id'])
             st.code(share_link)
             st.info("Link copied! (Feature will be available after deployment)")
 
 def surprise_continuation():
-    """Generate a surprise story continuation with random cultural elements."""
+    """Generate a surprise story with random cultural elements."""
     surprise_prompts = [
-        "Suddenly, an unexpected character from a different cultural background appears",
-        "The story takes a turn involving an ancient tradition or modern trend",
-        "A cultural artifact or symbol becomes central to the plot",
-        "The setting shifts to a location rich with cultural significance",
-        "A piece of music, art, or literature influences the characters' actions"
+        "A cyberpunk detective in Neo-Tokyo discovers jazz music holds the key to solving crimes",
+        "A vintage vinyl collector in Paris finds love through shared passion for indie music",
+        "A classical musician in Vienna discovers hip-hop culture changes their perspective on tradition",
+        "A street artist in Berlin combines graffiti with ancient calligraphy techniques",
+        "A tea ceremony master in Kyoto incorporates modern electronic music into traditional rituals",
+        "A fashion designer in Milan finds inspiration in ancient tribal patterns and modern streetwear",
+        "A chef in New Orleans blends Creole traditions with molecular gastronomy",
+        "A photographer in Morocco captures the intersection of traditional markets and digital commerce"
     ]
     
     import random
-    surprise_element = random.choice(surprise_prompts)
-    continue_story(surprise_element, is_branching_choice=True)
+    surprise_prompt = random.choice(surprise_prompts)
+    create_story_opener(surprise_prompt)
 
 def show_demo_examples():
     """Show demo examples for quick testing."""
@@ -798,6 +1171,20 @@ def show_demo_examples():
             # Reset session and start with example
             SessionManager.reset_session()
             create_story_opener(example)
+
+def show_footer():
+    """Display a professional footer with copyright and social links."""
+    # Add spacing
+    st.markdown("---")
+    
+    # Compact footer layout
+    st.markdown("**NARRAVOX** | **Connect** | **Project**")
+    st.markdown("Collaborative Story Generator | [Twitter](https://x.com/TanayVasishtha) [GitHub](https://github.com/tanayvasishtha/Narravox) | Qloo LLM Hackathon 2025")
+    st.caption("Powered by Perplexity Sonar & Qloo Insights API (Taste Analysis) | | Built with Streamlit & Python")
+    
+    # Copyright section
+    st.markdown("---")
+    st.markdown("© 2025 Narravox. All rights reserved. | @TanayVasishtha | Made with ❤️ for the Qloo LLM Hackathon", help="Footer links and copyright information")
 
 if __name__ == "__main__":
     # Check for required environment variables

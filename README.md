@@ -19,7 +19,7 @@ The application demonstrates how modern AI can transcend simple text generation 
 - Context-aware story continuation and branching
 
 **Cultural Intelligence**
-- Qloo Taste AI API for cross-domain affinity mapping
+- Qloo Insights API with Taste Analysis for cross-domain affinity mapping
 - Privacy-first entity extraction and recommendation
 - Real-time cultural context enrichment
 
@@ -66,7 +66,7 @@ QLOO_BASE_URL=https://hackathon.api.qloo.com
 streamlit run app.py
 ```
 
-The application will be available at `chttp://localhost:8501`
+The application will be available at `http://localhost:8501`
 
 ## Features
 
@@ -114,53 +114,74 @@ The application utilizes Perplexity's Sonar Pro model for sophisticated text gen
 - Integration of cultural elements into storytelling
 - Branching narrative option generation
 
-### Qloo Taste AI
+### Qloo Insights API
 
-Cultural intelligence is provided through Qloo's comprehensive API:
+Cultural intelligence is provided through Qloo's Insights API with Taste Analysis use case:
 
 - Entity extraction from natural language input
-- Cross-domain affinity discovery
+- Cross-domain affinity discovery through Taste Analysis
 - Cultural recommendation generation
 - Privacy-preserving taste profiling
+- Real-time cultural context enrichment
 
-## Deployment
-
-## 🚀 Deployment
-
-### Quick Deployment Check
-Run the deployment script to verify everything is ready:
-```bash
-python deploy.py
-```
+## Production Deployment
 
 ### Render Deployment (Recommended)
-1. Push your code to GitHub
-2. Connect your repository to Render
-3. Set environment variables in Render dashboard:
-   - `PERPLEXITY_API_KEY` - Your Perplexity API key
-   - `QLOO_API_KEY` - Your Qloo API key
-   - `QLOO_BASE_URL=https://hackathon.api.qloo.com`
-4. Deploy using the provided `render.yaml`
 
-### Alternative Deployment Options
+1. **Fork/Clone Repository**
+   ```bash
+   git clone https://github.com/tanayvasishtha/Narravox.git
+   cd Narravox
+   ```
 
-#### Heroku
+2. **Create Render Account**
+   - Sign up at [render.com](https://render.com)
+   - Connect your GitHub account
+
+3. **Deploy on Render**
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repository
+   - Configure the service:
+     - **Name**: `narravox`
+     - **Environment**: `Python`
+     - **Build Command**: `pip install -r requirements.txt`
+     - **Start Command**: `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`
+
+4. **Set Environment Variables**
+   In Render dashboard, go to your service → Environment → Add:
+   - `PERPLEXITY_API_KEY` = Your Perplexity API key
+   - `QLOO_API_KEY` = Your Qloo API key  
+   - `QLOO_BASE_URL` = `https://hackathon.api.qloo.com`
+
+5. **Deploy**
+   - Click "Create Web Service"
+   - Wait for build to complete (2-3 minutes)
+   - Your app will be live at `https://your-app-name.onrender.com`
+
+### Alternative Deployment Platforms
+
+**Heroku**
 ```bash
-heroku create narravox-app
+# Create Procfile
+echo "web: streamlit run app.py --server.port \$PORT --server.address 0.0.0.0" > Procfile
+
+# Deploy
+heroku create your-app-name
 heroku config:set PERPLEXITY_API_KEY=your_key
 heroku config:set QLOO_API_KEY=your_key
+heroku config:set QLOO_BASE_URL=https://hackathon.api.qloo.com
 git push heroku main
 ```
 
-#### Railway
-1. Connect your GitHub repository to Railway
-2. Set environment variables in Railway dashboard
-3. Deploy automatically
+**Railway**
+- Connect GitHub repository
+- Set environment variables in Railway dashboard
+- Automatic deployment on push
 
-#### Vercel
-```bash
-vercel --prod
-```
+**Vercel**
+- Install Vercel CLI: `npm i -g vercel`
+- Run: `vercel --python`
+- Set environment variables in Vercel dashboard
 
 ### Environment Variables
 Make sure to set these in your deployment platform:
